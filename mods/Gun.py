@@ -116,7 +116,8 @@ class Gun:
             return False
             
         # 检查位置误差
-        error_steps = abs(self.device.position_error)
+        error_params = self.device.position_error
+        error_steps = abs(error_params.error)  # 从PositionErrorParams中提取error字段
         error_angle = error_steps / self.steps_per_degree
         
         return error_angle <= threshold and abs(self.current_angle - self.target_angle) <= threshold
