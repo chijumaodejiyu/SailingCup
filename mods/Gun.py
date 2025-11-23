@@ -125,7 +125,7 @@ class Gun:
     def fire(self):
         """触发开火"""
         GPIO.output(self.fire_pin, GPIO.HIGH)
-        time.sleep(0.5)  # 保持高电平0.5秒
+        time.sleep(1)  # 保持高电平1秒
         GPIO.output(self.fire_pin, GPIO.LOW)
         
     def cleanup(self):
