@@ -72,6 +72,11 @@ class Gun:
         
         参数:
             angle (float): 调整角度，正值为向上，负值为向下
+            
+        使用move_to闭环控制实现:
+        1. 设置运动参数
+        2. 使用绝对位置移动
+        3. 等待移动完成
         """
         # 限制角度范围 (-30度到30度)
         angle = max(-30, min(30, angle))
@@ -80,10 +85,18 @@ class Gun:
         # 计算目标位置(脉冲数)
         target_steps = int(angle * self.steps_per_degree)
         
-        # 移动步进电机到目标位置
+        # 设置运动参数
+        self.device.set_speed(500)  # 设置速度为500步/秒
+        self.device.set_acceleration(1000)  # 设置加速度为1000步/秒²
+        
+        # 使用绝对位置移动
         self.device.move_to(target_steps)
         
-        # 更新当前角度
+        # 等待移动完成
+        while not self.device.is_in_position:
+            time.sleep(0.1)
+            
+        # 更新角度状态
         self.current_angle = angle
         
     def is_aimed(self, threshold=1.0):
@@ -95,8 +108,18 @@ class Gun:
             
         返回:
             bool: 是否已瞄准
+            
+        结合设备状态和位置误差进行判断
         """
-        return abs(self.current_angle - self.target_angle) <= threshold
+        # 检查设备是否在位置
+        if not self.device.is_in_position:
+            return False
+            
+        # 检查位置误差
+        error_steps = abs(self.device.position_error)
+        error_angle = error_steps / self.steps_per_degree
+        
+        return error_angle <= threshold and abs(self.current_angle - self.target_angle) <= threshold
         
     def fire(self):
         """触发开火"""
