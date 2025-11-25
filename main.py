@@ -4,12 +4,47 @@ import time
 import logging
 import threading
 import serial
-#import RPi.GPIO as GPIO
+import platform
+import os
 from typing import List, Dict, Optional, Tuple
 from collections import deque
 from stepper.device import Device
 from stepper.stepper_core.parameters import DeviceParams
 from stepper.stepper_core.configs import Address
+
+def is_raspberry_pi() -> bool:
+    """检测是否运行在树莓派上"""
+    try:
+        # 检查平台和硬件信息
+        if platform.system() != 'Linux':
+            return False
+        
+        # 检查是否存在树莓派特有的文件
+        if os.path.exists('/proc/device-tree/model'):
+            with open('/proc/device-tree/model', 'r') as f:
+                model_info = f.read().lower()
+                if 'raspberry' in model_info:
+                    return True
+        
+        # 检查环境变量
+        if os.environ.get('RASPBERRY_PI', '').lower() in ('1', 'true', 'yes'):
+            return True
+            
+        return False
+    except:
+        return False
+
+# 条件导入GPIO模块
+if is_raspberry_pi():
+    try:
+        import RPi.GPIO as GPIO
+        logger.info("使用真实的RPi.GPIO模块")
+    except ImportError:
+        logger.warning("无法导入RPi.GPIO，使用模拟GPIO模块")
+        from mods.mock_gpio import GPIO
+else:
+    logger.info("检测到非树莓派环境，使用模拟GPIO模块")
+    from mods.mock_gpio import GPIO
 
 # 配置常量
 CAMERA_SOURCE = 0  # 摄像头源
