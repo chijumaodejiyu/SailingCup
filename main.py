@@ -11,6 +11,11 @@ from collections import deque
 from stepper.device import Device
 from stepper.stepper_core.parameters import DeviceParams
 from stepper.stepper_core.configs import Address
+from mods.DeviceManager import DeviceManager
+
+# 配置日志
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def is_raspberry_pi() -> bool:
     """检测是否运行在树莓派上"""
@@ -66,10 +71,6 @@ AIM_THRESHOLD = 2.0  # 瞄准阈值(度)
 SEARCH_ANGLE = 25  # 搜索角度(度)
 DETECTION_AVERAGE_COUNT = 3  # 检测结果平均次数
 MAIN_LOOP_SLEEP = 0.05  # 主循环休眠时间(秒)
-
-# 配置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 class SerialController:
     """串口控制器"""
@@ -131,17 +132,17 @@ class GPIOController:
         GPIO.cleanup()
 
 class CameraController:
-    """摄像头控制器（使用ffmpeg）"""
+    """摄像头控制器（使用V4L2）"""
     
-    def __init__(self, source: int = 0):
+    def __init__(self, source: int = 2):
         self.source = source
         self.cap = None
         
     def initialize(self) -> bool:
         """初始化摄像头"""
         try:
-            # 使用ffmpeg后端
-            self.cap = cv2.VideoCapture(self.source, cv2.CAP_FFMPEG)
+            # 使用V4L2后端
+            self.cap = cv2.VideoCapture(self.source, cv2.CAP_V4L2)
             if not self.cap.isOpened():
                 logger.error("无法打开摄像头")
                 return False
