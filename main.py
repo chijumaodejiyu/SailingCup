@@ -62,6 +62,26 @@ else:
     logger.info("检测到非树莓派环境，使用模拟GPIO模块")
     from mods.mock_gpio import GPIO
 
+# 条件导入串口模块（仅用于底盘串口虚拟化）
+if is_raspberry_pi():
+    import serial
+    logger.info("使用真实的串口模块")
+else:
+    from mods.mock_serial import Serial as serial
+    logger.info("检测到非树莓派环境，底盘串口使用模拟串口模块")
+
+# 条件导入串口模块
+if is_raspberry_pi():
+    try:
+        import serial
+        logger.info("使用真实的串口模块")
+    except ImportError:
+        logger.warning("无法导入串口模块，使用模拟串口模块")
+        from mods.mock_serial import Serial as serial
+else:
+    logger.info("检测到非树莓派环境，使用模拟串口模块")
+    from mods.mock_serial import Serial as serial
+
 # 配置常量
 CAMERA_SOURCE = 2  # 摄像头源
 TCP_SERVER_IP = '192.168.1.100'  # TODO: 配置TCP服务器IP
