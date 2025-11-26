@@ -3,7 +3,6 @@ import numpy as np
 import time
 import logging
 import threading
-import serial
 import platform
 import os
 from typing import List, Dict, Optional, Tuple
@@ -39,6 +38,18 @@ def is_raspberry_pi() -> bool:
     except:
         return False
 
+# 条件导入串口模块（仅用于底盘串口）
+if is_raspberry_pi():
+    try:
+        import serial
+        logger.info("使用真实的串口模块")
+    except ImportError:
+        logger.warning("无法导入串口模块，使用模拟串口模块")
+        from mods.mock_serial import Serial as serial
+else:
+    logger.info("检测到非树莓派环境，底盘串口使用模拟串口模块")
+    from mods.mock_serial import Serial as serial
+
 # 条件导入GPIO模块
 if is_raspberry_pi():
     try:
@@ -52,11 +63,11 @@ else:
     from mods.mock_gpio import GPIO
 
 # 配置常量
-CAMERA_SOURCE = 0  # 摄像头源
+CAMERA_SOURCE = 2  # 摄像头源
 TCP_SERVER_IP = '192.168.1.100'  # TODO: 配置TCP服务器IP
 TCP_SERVER_PORT = 8080  # TODO: 配置TCP服务器端口
 SERIAL_PORT_A = '/dev/ttyAMA0'  # A串口 - 底盘STM32
-SERIAL_PORT_B = '/dev/ttyAMA1'  # B串口 - 步进电机y轴
+SERIAL_PORT_B = '/dev/ttyUSB0'  # B串口 - 步进电机y轴
 SERIAL_BAUDRATE = 115200
 FIRE_GPIO_PIN = 18  # 开火GPIO引脚
 
