@@ -5,6 +5,7 @@ import logging
 import threading
 import platform
 import os
+from ultralytics.models.yolo import YOLO
 from typing import List, Dict, Optional, Tuple
 from collections import deque
 from stepper.device import Device
@@ -213,8 +214,7 @@ class YOLODetector:
     def initialize(self) -> bool:
         """初始化YOLO模型"""
         try:
-            # TODO: 加载YOLO11模型
-            # self.model = yolov11.load_model('path/to/model')
+            self.model = YOLO('mods/best.pt')
             logger.info("YOLO检测器初始化成功")
             return True
         except Exception as e:
