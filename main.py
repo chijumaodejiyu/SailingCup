@@ -85,8 +85,8 @@ else:
 
 # 配置常量
 CAMERA_SOURCE = 2  # 摄像头源
-TCP_SERVER_IP = '192.168.1.100'  # TODO: 配置TCP服务器IP
-TCP_SERVER_PORT = 8080  # TODO: 配置TCP服务器端口
+TCP_SERVER_IP = '192.168.1.100'  # 配置TCP服务器IP
+TCP_SERVER_PORT = 8080  #  配置TCP服务器端口
 SERIAL_PORT_A = '/dev/ttyAMA0'  # A串口 - 底盘STM32
 SERIAL_PORT_B = '/dev/ttyUSB0'  # B串口 - 步进电机y轴
 SERIAL_BAUDRATE = 115200
@@ -225,10 +225,25 @@ class YOLODetector:
         """异步目标检测"""
         def detection_task():
             try:
-                # TODO: 实现YOLO11检测逻辑
-                # detections = self.model.detect(frame)
-                # 模拟检测结果
-                detections = self._mock_detection(frame)
+                # 使用YOLO模型进行目标检测
+                results = self.model.predict(frame, verbose=False)
+                
+                detections = []
+                for result in results:
+                    boxes = result.boxes
+                    if boxes is not None:
+                        for box in boxes:
+                            # 获取检测结果
+                            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                            confidence = box.conf[0].cpu().numpy()
+                            class_id = int(box.cls[0].cpu().numpy())
+                            
+                            detections.append({
+                                'class': class_id,
+                                'confidence': float(confidence),
+                                'bbox': [float(x1), float(y1), float(x2), float(y2)],
+                                'id': len(detections) + 1
+                            })
                 
                 with self.lock:
                     self.detection_queue.append(detections)
