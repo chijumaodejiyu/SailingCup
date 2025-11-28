@@ -357,8 +357,20 @@ class MainController:
             
     def control_chassis(self, angle: float):
         """控制底盘转动"""
-        # TODO: 实现底盘控制协议
-        command = f"TURN {angle:.2f}"
+        # 根据角度值生成转向命令
+        if angle > 0:
+            # 右转，角度限制在1-180度之间
+            angle_limited = max(1, min(180, abs(angle)))
+            command = f"R{int(angle_limited)}"
+        elif angle < 0:
+            # 左转，角度限制在1-180度之间
+            angle_limited = max(1, min(180, abs(angle)))
+            command = f"L{int(angle_limited)}"
+        else:
+            # 角度为0，发送停止命令
+            command = "S"
+        
+        logger.debug(f"发送底盘命令: {command}")
         self.serial_a.send_command(command)
         
     def control_gun(self, angle: float):
