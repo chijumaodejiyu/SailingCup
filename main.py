@@ -166,7 +166,7 @@ class GPIOController:
 class CameraController:
     """摄像头控制器（使用V4L2）"""
     
-    def __init__(self, source: int = 2):
+    def __init__(self, source: int = 0):
         self.source = source
         self.cap = None
         
