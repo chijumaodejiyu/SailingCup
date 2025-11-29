@@ -3,6 +3,16 @@ import cv2
 from ultralytics import YOLO
 
 
+def scan_cameras(max_id=10):
+    """扫描可用摄像头ID"""
+    available = []
+    for i in range(max_id):
+        cap = cv2.VideoCapture(i)
+        if cap.isOpened():
+            available.append(i)
+            cap.release()
+    return available
+
 def run_yolo_on_camera(model_path, conf=0.25, camera_id=0):
     model = YOLO(model_path)
     cap = cv2.VideoCapture(camera_id)
@@ -35,9 +45,27 @@ def main():
     parser = argparse.ArgumentParser(description="YOLO模型摄像头测试工具")
     parser.add_argument('--model', type=str, default='mods/best.pt', help='模型路径')
     parser.add_argument('--conf', type=float, default=0.25, help='置信度阈值')
-    parser.add_argument('--camera', type=int, default=0, help='摄像头ID')
+    parser.add_argument('--camera', type=int, default=None, help='摄像头ID（不指定则自动选择）')
+    parser.add_argument('--scan', action='store_true', help='仅扫描可用摄像头并退出')
     args = parser.parse_args()
-    run_yolo_on_camera(args.model, conf=args.conf, camera_id=args.camera)
+
+    available = scan_cameras()
+    if args.scan:
+        print(f"可用摄像头ID: {available}")
+        return
+    if not available:
+        print("未检测到可用摄像头！")
+        return
+    if args.camera is None:
+        print(f"自动选择摄像头: {available[0]}")
+        camera_id = available[0]
+    else:
+        camera_id = args.camera
+        if camera_id not in available:
+            print(f"指定的摄像头ID {camera_id} 不可用！可用摄像头: {available}")
+            return
+    print(f"可用摄像头ID: {available}")
+    run_yolo_on_camera(args.model, conf=args.conf, camera_id=camera_id)
 
 if __name__ == '__main__':
     main()
