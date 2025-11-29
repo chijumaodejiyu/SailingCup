@@ -84,11 +84,11 @@ else:
     from mods.mock_serial import Serial as serial
 
 # 配置常量
-CAMERA_SOURCE = 0  # 摄像头源
+CAMERA_SOURCE = 1  # 摄像头源
 TCP_SERVER_IP = '192.168.1.100'  # 配置TCP服务器IP
 TCP_SERVER_PORT = 8080  #  配置TCP服务器端口
-SERIAL_PORT_A = '/dev/ttyAMA0'  # A串口 - 底盘STM32
-SERIAL_PORT_B = '/dev/ttyUSB0'  # B串口 - 步进电机y轴
+SERIAL_PORT_A = '/dev/ttyUSB0'  # A串口 - 底盘STM32
+SERIAL_PORT_B = '/dev/ttyUSB1'  # B串口 - 步进电机y轴
 SERIAL_BAUDRATE = 115200
 FIRE_GPIO_PIN = 18  # 开火GPIO引脚
 
