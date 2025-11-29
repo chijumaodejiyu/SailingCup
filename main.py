@@ -84,7 +84,7 @@ else:
     from mods.mock_serial import Serial as serial
 
 # 配置常量
-CAMERA_SOURCE = 2  # 摄像头源
+CAMERA_SOURCE = 0  # 摄像头源
 TCP_SERVER_IP = '192.168.1.100'  # 配置TCP服务器IP
 TCP_SERVER_PORT = 8080  #  配置TCP服务器端口
 SERIAL_PORT_A = '/dev/ttyAMA0'  # A串口 - 底盘STM32
@@ -166,7 +166,7 @@ class GPIOController:
 class CameraController:
     """摄像头控制器（使用V4L2）"""
     
-    def __init__(self, source: int = 0):
+    def __init__(self, source: int = 1):
         self.source = source
         self.cap = None
         
