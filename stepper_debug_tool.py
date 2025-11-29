@@ -11,6 +11,7 @@ import json
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 from enum import Enum
+import serial.tools.list_ports
 
 from stepper.device import Device
 from stepper.stepper_core.parameters import DeviceParams
@@ -39,7 +40,8 @@ class StepperCommand(Enum):
 class StepperDebugTool:
     """基于stepper库的步进电机调试工具"""
     
-    def __init__(self, port: str = "/dev/ttyUSB0", baudrate: int = 115200, address: int = 1):
+    def __init__(self, port: str = "/dev/ttyUSB0", baudrate: int = 115200, address: int = 1,
+                 autoconnect: bool = False, scan_timeout: float = 5.0, max_retries: int = 3):
         """
         初始化步进电机调试工具
         
@@ -47,10 +49,16 @@ class StepperDebugTool:
             port: 串口端口
             baudrate: 波特率
             address: 设备地址
+            autoconnect: 是否自动扫描并连接设备
+            scan_timeout: 扫描超时时间（秒）
+            max_retries: 最大重试次数
         """
         self.port = port
         self.baudrate = baudrate
         self.address = address
+        self.autoconnect = autoconnect
+        self.scan_timeout = scan_timeout
+        self.max_retries = max_retries
         
         # 设备管理器
         self.device_manager = DeviceManager()
@@ -75,12 +83,39 @@ class StepperDebugTool:
         self.monitor_thread = None
         
         logger.info(f"步进电机调试工具初始化完成，端口: {port}, 波特率: {baudrate}, 地址: {address}")
+        logger.info(f"自动连接: {'启用' if autoconnect else '禁用'}")
     
-    def connect(self) -> bool:
-        """连接设备"""
+    def scan_ports(self) -> List[str]:
+        """扫描可用的串口设备"""
         try:
+            ports = serial.tools.list_ports.comports()
+            available_ports = []
+            
+            for port in ports:
+                port_info = {
+                    'device': port.device,
+                    'description': port.description,
+                    'hwid': port.hwid,
+                    'vid': port.vid if port.vid else None,
+                    'pid': port.pid if port.pid else None
+                }
+                available_ports.append(port_info)
+                logger.info(f"发现串口: {port.device} - {port.description}")
+            
+            return available_ports
+        except Exception as e:
+            logger.error(f"扫描串口失败: {e}")
+            return []
+    
+    def _connect_to_port(self, port: str) -> bool:
+        """尝试连接到指定端口"""
+        try:
+            # 先关闭现有连接
+            if self.is_connected:
+                self.disconnect()
+            
             # 注册串口设备
-            self.device_manager.register_serial("debug_device", self.port, self.baudrate)
+            self.device_manager.register_serial("debug_device", port, self.baudrate)
             
             # 获取串口设备
             serial_device = self.device_manager.get_device("debug_device")
@@ -93,14 +128,80 @@ class StepperDebugTool:
                 )
             )
             
-            self.is_connected = True
-            logger.info(f"设备连接成功: {self.port}")
-            return True
-            
+            # 验证设备连接
+            if self._validate_device():
+                self.port = port  # 更新当前端口
+                self.is_connected = True
+                logger.info(f"设备连接成功: {port}")
+                return True
+            else:
+                logger.warning(f"设备验证失败: {port}")
+                self.disconnect()
+                return False
+                
         except Exception as e:
-            logger.error(f"设备连接失败: {e}")
-            self.is_connected = False
+            logger.debug(f"连接端口 {port} 失败: {e}")
             return False
+    
+    def _validate_device(self) -> bool:
+        """验证设备是否正常工作"""
+        try:
+            # 尝试获取设备状态来验证连接
+            # 这里可以根据实际设备协议添加更复杂的验证逻辑
+            if self.device:
+                # 简单的状态检查
+                status = self.get_status()
+                return 'error' not in status
+            return False
+        except Exception as e:
+            logger.debug(f"设备验证失败: {e}")
+            return False
+    
+    def connect(self) -> bool:
+        """连接设备"""
+        if self.autoconnect:
+            return self._autoconnect()
+        else:
+            return self._connect_to_port(self.port)
+    
+    def _autoconnect(self) -> bool:
+        """自动扫描并连接设备"""
+        logger.info("开始自动扫描串口设备...")
+        
+        start_time = time.time()
+        retry_count = 0
+        
+        while retry_count < self.max_retries:
+            # 扫描可用串口
+            available_ports = self.scan_ports()
+            
+            if not available_ports:
+                logger.warning("未发现可用串口设备")
+                time.sleep(1)  # 等待1秒后重试
+                retry_count += 1
+                continue
+            
+            # 尝试连接每个可用串口
+            for port_info in available_ports:
+                port = port_info['device']
+                logger.info(f"尝试连接串口: {port}")
+                
+                if self._connect_to_port(port):
+                    logger.info(f"自动连接成功: {port}")
+                    return True
+                
+                # 检查是否超时
+                if time.time() - start_time > self.scan_timeout:
+                    logger.warning(f"扫描超时 ({self.scan_timeout}秒)")
+                    return False
+            
+            # 等待一段时间后重试
+            logger.info(f"扫描完成，等待重试... (重试次数: {retry_count + 1}/{self.max_retries})")
+            time.sleep(2)
+            retry_count += 1
+        
+        logger.error(f"自动连接失败，达到最大重试次数: {self.max_retries}")
+        return False
     
     def disconnect(self):
         """断开设备连接"""
@@ -421,6 +522,9 @@ def main():
     parser.add_argument('--port', '-p', default='/dev/ttyUSB0', help='串口端口')
     parser.add_argument('--baudrate', '-b', type=int, default=115200, help='波特率')
     parser.add_argument('--address', '-a', type=int, default=1, help='设备地址')
+    parser.add_argument('--autoconnect', action='store_true', help='自动扫描并连接设备')
+    parser.add_argument('--scan-timeout', type=float, default=5.0, help='扫描超时时间（秒）')
+    parser.add_argument('--max-retries', type=int, default=3, help='最大重试次数')
     
     subparsers = parser.add_subparsers(dest='command', help='命令')
     
@@ -466,7 +570,14 @@ def main():
     args = parser.parse_args()
     
     # 创建调试工具实例
-    tool = StepperDebugTool(port=args.port, baudrate=args.baudrate, address=args.address)
+    tool = StepperDebugTool(
+        port=args.port, 
+        baudrate=args.baudrate, 
+        address=args.address,
+        autoconnect=args.autoconnect,
+        scan_timeout=args.scan_timeout,
+        max_retries=args.max_retries
+    )
     
     if args.command == 'connect':
         if tool.connect():
